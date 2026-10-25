@@ -19,6 +19,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import app.pillion.core.DashResolution
+import app.pillion.core.Logger
 import app.pillion.core.MirrorEngine
 import app.pillion.core.ScreenSource
 import app.pillion.core.MirrorState
@@ -63,6 +64,10 @@ class CaptureService : Service() {
         val maxFps = intent?.getIntExtra(EXTRA_MAX_FPS, 15) ?: 15
         val dashResolution = dashResolutionFrom(intent)
         dashEnabled = intent?.getBooleanExtra(EXTRA_DASH_ENABLED, false) ?: false
+        Logger.d(
+            "session start · q=$quality fps=$maxFps dash=$dashEnabled " +
+                "layout=${dashResolution.label} · grant=${resultData != null}",
+        )
         startSession(quality, maxFps, dashResolution)
         return START_NOT_STICKY
     }
@@ -81,6 +86,7 @@ class CaptureService : Service() {
         val data = resultData
         if (resultCode == 0 || data == null) {
             runCatching { startForegroundTyped(ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE) }
+            Logger.e("no screen-capture grant (resultCode=$resultCode data=${data != null})")
             fail("Screen capture not granted — tap Start again"); return
         }
         // Must be foreground (mediaProjection) before acquiring the projection (Android 10+).
@@ -101,10 +107,13 @@ class CaptureService : Service() {
         // Create the mirror display NOW, while the projection token is fresh.
         val mirror = MediaProjectionScreenSource(this, projection, quality)
         runCatching { mirror.start() }
+            .onSuccess { Logger.d("mirror display started") }
+            .onFailure { Logger.e("mirror display failed", it) }
 
         val source: ScreenSource = if (dashEnabled) {
             val switch = SwitchableScreenSource(mirror, DashStreamScreenSource())
             dashSwitch = switch
+            Logger.d("dash mode on · helper ensureRunning virtual=${dashResolution.label}")
             // Spawn or reuse the helper. Starting it needs Wireless Debugging, but an already-running
             // helper serves over loopback and survives Wi-Fi loss.
             scope.launch(Dispatchers.IO) {
@@ -362,6 +371,7 @@ class CaptureService : Service() {
     }
 
     private fun fail(message: String) {
+        Logger.e("session failed: $message")
         _state.value = MirrorState.Error(message)
         stopSelf()
     }

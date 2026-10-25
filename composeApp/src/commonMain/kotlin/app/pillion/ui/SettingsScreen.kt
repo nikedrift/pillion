@@ -81,6 +81,7 @@ internal fun SettingsScreen(
     onBack: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
+    var showDiagnostics by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxSize()
             .safeDrawingPadding()
@@ -249,11 +250,15 @@ internal fun SettingsScreen(
             LinkRow("Report an issue") { uriHandler.openUri("$REPO_URL/issues") }
             GroupDivider()
             LinkRow("Changelog") { uriHandler.openUri("$REPO_URL/blob/main/CHANGELOG.md") }
+            GroupDivider()
+            LinkRow("Diagnostics (recent log)") { showDiagnostics = true }
         }
 
         Spacer(Modifier.height(28.dp))
         MadeByCredit { uriHandler.openUri("https://github.com/alexandrevega") }
         Spacer(Modifier.height(16.dp))
+
+        if (showDiagnostics) DiagnosticsDialog(onClose = { showDiagnostics = false })
     }
 }
 
