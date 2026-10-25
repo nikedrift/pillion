@@ -12,4 +12,6 @@ actual object Logger {
     actual fun snapshot(): List<String> = emptyList()
 
     actual fun clear() = Unit
+
+    actual fun attachFileSink(path: String?) = Unit
 }

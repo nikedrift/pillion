@@ -460,7 +460,7 @@ private fun DashTextSizeSelector(
     Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
         Text("Dash text size", style = MaterialTheme.typography.bodyLarge)
         Text(
-            "How large apps render on the dash. Larger = fewer things fit on screen.",
+            "How large apps render on the dash. Larger = bigger text but less map visible.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

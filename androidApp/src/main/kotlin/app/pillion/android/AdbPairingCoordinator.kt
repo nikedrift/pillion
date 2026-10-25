@@ -16,6 +16,7 @@ import android.os.Build
 import android.util.Log
 import app.pillion.MainActivity
 import app.pillion.core.DashStage
+import app.pillion.core.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -61,6 +62,14 @@ object AdbPairingCoordinator {
     private val _state = MutableStateFlow(AdbPairingState())
     val state: StateFlow<AdbPairingState> = _state.asStateFlow()
 
+    init {
+        // Mirror the pairing state machine into the diagnostics log: without this the setup flow is
+        // invisible after the fact, which is where most "it just doesn't connect" reports die.
+        scope.launch {
+            _state.collect { s -> Logger.d("adb: ${s.stage} ${s.message ?: ""}".trim()) }
+        }
+    }
+
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private var multicastLock: WifiManager.MulticastLock? = null
     @Volatile private var resolving = false
@@ -83,6 +92,7 @@ object AdbPairingCoordinator {
     }
 
     fun pairExplicit(context: Context, endpoint: AdbPairingEndpoint, code: String) {
+        Logger.d("adb: pair requested with ${endpoint.host}:${endpoint.port}")
         scope.launch { pair(context.applicationContext, endpoint, code.trim()) }
     }
 

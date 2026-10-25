@@ -130,8 +130,14 @@ class CaptureService : Service() {
                     )
                 }
                     .onFailure {
-                        Log.e(TAG, "dash: helper unavailable", it)
-                        fail(it.message ?: "Dash helper unavailable")
+                        // Never kill the session over the optional helper: fall back to plain
+                        // mirroring, which still works, and leave the reason in the diagnostics log.
+                        Log.e(TAG, "dash: helper unavailable — continuing in mirror mode", it)
+                        Logger.e(
+                            "dash helper unavailable — mirror only: " +
+                                (it.message ?: it::class.simpleName.orEmpty()),
+                            it,
+                        )
                     }
             }
             registerScreenReceiver()

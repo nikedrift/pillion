@@ -10,14 +10,17 @@ package app.pillion.core
  * drawn twice as large in pixels. Nothing is cropped or zoomed after the fact.
  */
 enum class DashTextSize(val dpi: Int) {
-    /** 480x240 px = 480x240 dp — the app's widest layout, smallest text. */
+    /** 480x240 px = 480x240 dp — the app's widest layout, smallest text, most map visible. */
     Normal(160),
 
-    /** 480x240 px = 320x160 dp — compact layout, ~1.5x bigger text. */
-    Large(240),
+    /** 480x240 px = 384x192 dp — slightly larger text, still plenty of map. */
+    Large(200),
 
-    /** 480x240 px = 240x120 dp — phone layout, ~2x bigger text. Best legibility on the dash. */
-    Huge(320),
+    /** 480x240 px = 320x160 dp — noticeably larger text, less map. */
+    Huge(240),
+
+    /** 480x240 px = 240x120 dp — phone layout: huge text, the map mostly disappears. */
+    Max(320),
 
     ;
 
@@ -26,6 +29,7 @@ enum class DashTextSize(val dpi: Int) {
             Normal -> "Normal"
             Large -> "Large"
             Huge -> "Huge"
+            Max -> "Max"
         }
 
     companion object {

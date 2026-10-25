@@ -13,4 +13,11 @@ expect object Logger {
 
     /** Drop the buffered lines (the diagnostics screen's "Clear" action). */
     fun clear()
+
+    /**
+     * Mirror every line to [path] so the log survives process death — a kill (OOM/aggressive OEM
+     * task killer) or a native crash leaves no uncaught exception, and an in-memory buffer would be
+     * lost. Null detaches. No-op on platforms without a file sink.
+     */
+    fun attachFileSink(path: String?)
 }

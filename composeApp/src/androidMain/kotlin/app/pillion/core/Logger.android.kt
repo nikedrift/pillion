@@ -1,6 +1,7 @@
 package app.pillion.core
 
 import android.util.Log
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -20,10 +21,26 @@ actual object Logger {
         record("E", message + (error?.let { " — " + oneLine(it.stackTraceToString()) } ?: ""))
     }
 
-    actual fun snapshot(): List<String> = synchronized(lines) { lines.toList() }
+    actual fun snapshot(): List<String> {
+        // Prefer the file: it also holds the previous runs, including the last lines written before a
+        // crash or a kill, which the in-memory buffer cannot show.
+        val file = sink
+        if (file != null) {
+            val tail = runCatching {
+                if (!file.exists()) emptyList() else file.readLines().takeLast(MAX_LINES)
+            }.getOrDefault(emptyList())
+            if (tail.isNotEmpty()) return tail
+        }
+        return synchronized(lines) { lines.toList() }
+    }
 
     actual fun clear() {
         synchronized(lines) { lines.clear() }
+        runCatching { sink?.delete() }
+    }
+
+    actual fun attachFileSink(path: String?) {
+        sink = path?.let { File(it) }
     }
 
     private fun record(level: String, message: String) {
@@ -31,6 +48,14 @@ actual object Logger {
         synchronized(lines) {
             if (lines.size >= MAX_LINES) lines.removeAt(0)
             lines.add(line)
+        }
+        val file = sink ?: return
+        runCatching {
+            if (file.length() > MAX_FILE_BYTES) {
+                val keep = file.readLines().takeLast(MAX_LINES)
+                file.writeText(keep.joinToString("\n", postfix = "\n"))
+            }
+            file.appendText(line + "\n")
         }
     }
 
@@ -43,6 +68,8 @@ actual object Logger {
 
     private const val TAG = "Pillion"
     private const val MAX_LINES = 400
+    private const val MAX_FILE_BYTES = 256L * 1024
     private val lines = mutableListOf<String>()
+    @Volatile private var sink: File? = null
 }
 

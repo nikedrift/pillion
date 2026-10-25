@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import app.pillion.android.AndroidDashSetup
 import app.pillion.android.AndroidMirrorController
 import app.pillion.android.AndroidSettingsStore
+import app.pillion.core.Logger
 import app.pillion.android.AdbPairingCoordinator
 import app.pillion.android.CaptureService
 import app.pillion.android.GitHubUpdateChecker
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         val data = result.data
+        Logger.d("projection result · resultCode=${result.resultCode} data=${data != null}")
         if (result.resultCode == RESULT_OK && data != null) {
             if (pendingSdl) {
                 // SDL path: hand the capture grant to the SDL stack; the session connects on USB attach
@@ -103,6 +105,10 @@ class MainActivity : ComponentActivity() {
 
     private fun startMirroring(settings: MirrorSettings) {
         pendingSettings = settings
+        Logger.d(
+            "start requested · q=${settings.quality} fps=${settings.maxFps} " +
+                "layout=${settings.dashResolution.label} dpi=${settings.dashTextSize.dpi}",
+        )
         val missing = requiredPermissions().filter {
             checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
         }
@@ -110,11 +116,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestProjection() {
+        Logger.d("requesting screen-capture consent")
         val mpm = getSystemService(MediaProjectionManager::class.java)
         projectionLauncher.launch(mpm.createScreenCaptureIntent())
     }
 
     private fun stopMirroring() {
+        Logger.d("stop requested")
         startService(Intent(this, CaptureService::class.java).setAction(CaptureService.ACTION_STOP))
     }
 

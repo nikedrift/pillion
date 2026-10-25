@@ -21,8 +21,9 @@ class PillionApp : Application() {
     override fun onCreate() {
         super.onCreate()
         DebugTool.enableDebugTool()
+        Logger.attachFileSink(File(filesDir, LOG_FILE).absolutePath)
         Logger.d(
-            "device ${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} " +
+            "==== app start · ${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} " +
                 "(SDK ${Build.VERSION.SDK_INT}) · build ${Build.DISPLAY}",
         )
         hydrateLastCrash()
@@ -80,6 +81,7 @@ class PillionApp : Application() {
 
     private companion object {
         const val CRASH_FILE = "last-crash.txt"
+        const val LOG_FILE = "pillion.log"
         const val MAX_CRASH_BYTES = 128 * 1024
     }
 }
