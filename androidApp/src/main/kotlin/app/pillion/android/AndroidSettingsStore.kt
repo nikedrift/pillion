@@ -2,6 +2,7 @@ package app.pillion.android
 
 import android.content.Context
 import app.pillion.core.DashResolution
+import app.pillion.core.DashTextSize
 import app.pillion.core.SettingsStore
 import app.pillion.core.ThemeMode
 
@@ -30,6 +31,13 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
         prefs.edit().putString(KEY_DASH_RESOLUTION, resolution.name).apply()
     }
 
+    override fun dashTextSize(): DashTextSize =
+        DashTextSize.fromName(prefs.getString(KEY_DASH_TEXT_SIZE, null))
+
+    override fun setDashTextSize(size: DashTextSize) {
+        prefs.edit().putString(KEY_DASH_TEXT_SIZE, size.name).apply()
+    }
+
     override fun selectedBikeId(): String? = prefs.getString(KEY_BIKE, null)
 
     override fun setSelectedBikeId(id: String) {
@@ -40,6 +48,7 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
         const val KEY_THEME = "theme_mode"
         const val KEY_DASH_ENABLED = "dash_enabled"
         const val KEY_DASH_RESOLUTION = "dash_resolution"
+        const val KEY_DASH_TEXT_SIZE = "dash_text_size"
         const val KEY_BIKE = "selected_bike_id"
     }
 }

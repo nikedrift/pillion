@@ -16,6 +16,10 @@ interface SettingsStore {
     fun dashResolution(): DashResolution
     fun setDashResolution(resolution: DashResolution)
 
+    /** Virtual display density for the dedicated dash helper (how big apps render). */
+    fun dashTextSize(): DashTextSize
+    fun setDashTextSize(size: DashTextSize)
+
     /** The head-unit the user picked at onboarding ([app.pillion.core.headunit.HeadUnitProfile.id]),
      *  or null if they haven't chosen yet (→ show the bike-selection screen). */
     fun selectedBikeId(): String?

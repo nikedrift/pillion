@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.pillion.core.AppInfo
 import app.pillion.core.DashResolution
+import app.pillion.core.DashTextSize
 import app.pillion.core.ThemeMode
 import app.pillion.core.UpdateInfo
 import app.pillion.resources.Res
@@ -73,6 +74,8 @@ internal fun SettingsScreen(
     dashEnabled: Boolean = false,
     dashResolution: DashResolution = DashResolution.DEFAULT,
     onDashResolution: (DashResolution) -> Unit = {},
+    dashTextSize: DashTextSize = DashTextSize.DEFAULT,
+    onDashTextSize: (DashTextSize) -> Unit = {},
     onSetUpDash: () -> Unit = {},
     onDisableDash: () -> Unit = {},
     bikeName: String = "",
@@ -230,6 +233,8 @@ internal fun SettingsScreen(
                 }
                 GroupDivider()
                 DashResolutionSelector(dashResolution, onDashResolution)
+                GroupDivider()
+                DashTextSizeSelector(dashTextSize, onDashTextSize)
             }
             Text(
                 "Casts the real app to the dash in landscape with the screen off. Run setup once " +
@@ -443,6 +448,34 @@ private fun AppRow() {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun DashTextSizeSelector(
+    selected: DashTextSize,
+    onSelect: (DashTextSize) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+        Text("Dash text size", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            "How large apps render on the dash. Larger = fewer things fit on screen.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            val options = DashTextSize.values().toList()
+            options.forEachIndexed { index, size ->
+                SegmentedButton(
+                    selected = selected == size,
+                    onClick = { onSelect(size) },
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                ) {
+                    Text(size.label)
+                }
+            }
         }
     }
 }

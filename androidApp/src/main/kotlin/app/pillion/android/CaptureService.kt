@@ -19,6 +19,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import app.pillion.core.DashResolution
+import app.pillion.core.DashTextSize
 import app.pillion.core.Logger
 import app.pillion.core.MirrorEngine
 import app.pillion.core.ScreenSource
@@ -63,12 +64,14 @@ class CaptureService : Service() {
         val quality = intent?.getIntExtra(EXTRA_QUALITY, 40) ?: 40
         val maxFps = intent?.getIntExtra(EXTRA_MAX_FPS, 15) ?: 15
         val dashResolution = dashResolutionFrom(intent)
+        val dashDpi = intent?.getIntExtra(EXTRA_DASH_DPI, DashTextSize.DEFAULT.dpi)
+            ?: DashTextSize.DEFAULT.dpi
         dashEnabled = intent?.getBooleanExtra(EXTRA_DASH_ENABLED, false) ?: false
         Logger.d(
             "session start · q=$quality fps=$maxFps dash=$dashEnabled " +
-                "layout=${dashResolution.label} · grant=${resultData != null}",
+                "layout=${dashResolution.label} dpi=$dashDpi · grant=${resultData != null}",
         )
-        startSession(quality, maxFps, dashResolution)
+        startSession(quality, maxFps, dashResolution, dashDpi)
         return START_NOT_STICKY
     }
 
@@ -78,7 +81,7 @@ class CaptureService : Service() {
      * (foreground app on a trusted display) whenever the phone is locked — **mirror while unlocked,
      * dash while locked**. The helper only encodes while locked, so it costs no extra battery idle.
      */
-    private fun startSession(quality: Int, maxFps: Int, dashResolution: DashResolution) {
+    private fun startSession(quality: Int, maxFps: Int, dashResolution: DashResolution, dashDpi: Int) {
         // A screen-capture grant is single-use. If it's missing or stale (e.g. cleared when the app
         // crashed + restarted), starting a mediaProjection foreground service throws SecurityException
         // — which would HARD-CRASH the app. So validate first, and on a stale grant fall back to a
@@ -113,7 +116,7 @@ class CaptureService : Service() {
         val source: ScreenSource = if (dashEnabled) {
             val switch = SwitchableScreenSource(mirror, DashStreamScreenSource())
             dashSwitch = switch
-            Logger.d("dash mode on · helper ensureRunning virtual=${dashResolution.label}")
+            Logger.d("dash mode on · helper ensureRunning virtual=${dashResolution.label} dpi=$dashDpi")
             // Spawn or reuse the helper. Starting it needs Wireless Debugging, but an already-running
             // helper serves over loopback and survives Wi-Fi loss.
             scope.launch(Dispatchers.IO) {
@@ -123,6 +126,7 @@ class CaptureService : Service() {
                         quality,
                         dashResolution,
                         preferExisting = true,
+                        dpi = dashDpi,
                     )
                 }
                     .onFailure {
@@ -134,7 +138,7 @@ class CaptureService : Service() {
             registerKeyguardUnlockListener()
             // Self-heal: if the helper is killed (adbd restart on Wi-Fi/debug loss), respawn it over
             // the loopback channel so the dash recovers instead of freezing.
-            DashHelper.startWatchdog(this, quality, dashResolution)
+            DashHelper.startWatchdog(this, quality, dashResolution, dashDpi)
             switch
         } else {
             mirror
@@ -464,6 +468,7 @@ class CaptureService : Service() {
         const val EXTRA_DASH_ENABLED = "dashEnabled"
         const val EXTRA_DASH_WIDTH = "dashWidth"
         const val EXTRA_DASH_HEIGHT = "dashHeight"
+        const val EXTRA_DASH_DPI = "dashDpi"
 
         // Handed over by the Activity after the user grants screen capture.
         @Volatile var resultCode: Int = 0

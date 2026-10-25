@@ -16,7 +16,8 @@ object DashHelper {
     const val DEFAULT_QUALITY = 40
 
     private const val TAG = "Pillion"
-    private const val DPI = 160
+    /** Default density of the virtual display; see [app.pillion.core.DashTextSize]. */
+    private const val DEFAULT_DPI = 160
     private const val DASH_PROTOCOL_WIDTH = 480
     private const val DASH_PROTOCOL_HEIGHT = 240
     private const val CONNECT_TIMEOUT_MS = 250
@@ -29,6 +30,7 @@ object DashHelper {
     private const val SPAWN_GRACE_MS = 8_000L
 
     @Volatile private var lastSpawnAt = 0L
+    @Volatile private var lastSpawnedDpi = -1
 
     @Synchronized
     fun ensureRunning(
@@ -36,9 +38,12 @@ object DashHelper {
         quality: Int,
         dashResolution: DashResolution,
         preferExisting: Boolean = false,
+        dpi: Int = DEFAULT_DPI,
     ) {
-        if (preferExisting && isRunning()) {
-            Log.d(TAG, "dash: using existing helper")
+        // Reuse the running helper only if it was spawned with the same density — otherwise a
+        // text-size change would silently keep the old layout until the phone restarts.
+        if (preferExisting && isRunning() && dpi == lastSpawnedDpi) {
+            Log.d(TAG, "dash: using existing helper (dpi=$dpi)")
             return
         }
 
@@ -62,7 +67,7 @@ object DashHelper {
         // Clear any stale helper so resolution/quality changes apply whenever ADB is reachable.
         runCatching { adb.runShell("pkill -f app.pillion.server.DashServer") }
         waitUntilStopped()
-        spawn(adb, appContext, quality, dashResolution)
+        spawn(adb, appContext, quality, dashResolution, dpi)
         check(waitUntilRunning()) { "Dash helper did not start" }
     }
 
@@ -103,7 +108,12 @@ object DashHelper {
      * offline as long as [PillionAdb.enableTcpip] succeeded earlier.
      */
     @Synchronized
-    fun startWatchdog(context: Context, quality: Int, dashResolution: DashResolution) {
+    fun startWatchdog(
+        context: Context,
+        quality: Int,
+        dashResolution: DashResolution,
+        dpi: Int = DEFAULT_DPI,
+    ) {
         if (watchdog?.isAlive == true) return // exactly one watchdog, even across session restarts
         val appContext = context.applicationContext
         // Each thread checks `watchdog === this`: if it's no longer the designated watchdog (a new one
@@ -121,7 +131,7 @@ object DashHelper {
                     // A helper we just spawned is still coming up; don't pkill+respawn it mid-startup.
                     if (SystemClock.elapsedRealtime() - lastSpawnAt < SPAWN_GRACE_MS) continue
                     Log.w(TAG, "dash: helper down — attempting respawn over loopback")
-                    runCatching { ensureRunning(appContext, quality, dashResolution) }
+                    runCatching { ensureRunning(appContext, quality, dashResolution, dpi = dpi) }
                         .onSuccess { Log.i(TAG, "dash: helper respawned") }
                         .onFailure { Log.w(TAG, "dash: respawn failed (offline / adb gone): ${it.message}") }
                 }
@@ -145,11 +155,17 @@ object DashHelper {
             }
         }.isSuccess
 
-    private fun spawn(adb: PillionAdb, context: Context, quality: Int, dashResolution: DashResolution) {
+    private fun spawn(
+        adb: PillionAdb,
+        context: Context,
+        quality: Int,
+        dashResolution: DashResolution,
+        dpi: Int = DEFAULT_DPI,
+    ) {
         Log.d(
             TAG,
             "dash: spawning helper virtual=${dashResolution.width}x${dashResolution.height} " +
-                "output=${DASH_PROTOCOL_WIDTH}x$DASH_PROTOCOL_HEIGHT",
+                "dpi=$dpi output=${DASH_PROTOCOL_WIDTH}x$DASH_PROTOCOL_HEIGHT",
         )
         // Detach the helper so it survives ADB disconnect AND Wi-Fi loss:
         // 1. setsid gives it a new session/process group, outside adbd's teardown group.
@@ -159,7 +175,7 @@ object DashHelper {
         // on its main classloader for physical-panel power control.
         val inner = "CLASSPATH=\$(pm path ${context.packageName} | grep base.apk | cut -d: -f2):\$SYSTEMSERVERCLASSPATH " +
             "app_process / app.pillion.server.DashServer " +
-            "${dashResolution.width} ${dashResolution.height} $DPI $quality " +
+            "${dashResolution.width} ${dashResolution.height} $dpi $quality " +
             "$DASH_PROTOCOL_WIDTH $DASH_PROTOCOL_HEIGHT " +
             "</dev/null >/dev/null 2>&1 &"
         val stream = adb.openShellStream("setsid sh -c '$inner'")
@@ -169,6 +185,7 @@ object DashHelper {
             }
         runCatching { stream.close() }
         lastSpawnAt = SystemClock.elapsedRealtime()
+        lastSpawnedDpi = dpi
         Log.d(TAG, "dash: helper spawned (detached to init)")
     }
 
