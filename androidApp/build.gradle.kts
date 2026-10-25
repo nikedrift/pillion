@@ -33,6 +33,21 @@ android {
         if (keystorePropertiesFile.exists()) FileInputStream(keystorePropertiesFile).use { load(it) }
     }
     signingConfigs {
+        // Debug builds are signed with the keystore committed in this fork, so successive builds
+        // install over each other. Relying on the default ~/.android/debug.keystore is not enough:
+        // AGP did not pick up the copy placed there on the CI runner, and a fresh runner would
+        // otherwise generate a brand-new key per run (→ "app not installed" on update).
+        val ciDebugKeystore = rootProject.file("ci/debug.keystore")
+        if (ciDebugKeystore.exists()) {
+            create("ciDebug") {
+                storeFile = ciDebugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
         if (keystorePropertiesFile.exists()) {
             create("release") {
                 storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
@@ -43,6 +58,11 @@ android {
         }
     }
     buildTypes {
+        getByName("debug") {
+            if (rootProject.file("ci/debug.keystore").exists()) {
+                signingConfig = signingConfigs.getByName("ciDebug")
+            }
+        }
         getByName("release") {
             isMinifyEnabled = false
             if (keystorePropertiesFile.exists()) {

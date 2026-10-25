@@ -30,14 +30,12 @@ jobs:
         with:
           packages: 'platforms;android-35 build-tools;35.0.0 platform-tools'
 
-      - name: Install the shared debug keystore
+      - name: Check the pinned debug keystore
         run: |
-          # AGP signs debug builds with ~/.android/debug.keystore; pinning it to the copy committed in
-          # the repo keeps every build upgradable in place (a fresh runner would otherwise generate a
-          # brand-new key each run, and Android rejects the update as a signature mismatch).
-          mkdir -p ~/.android
-          cp ci/debug.keystore ~/.android/debug.keystore
-          keytool -list -keystore ~/.android/debug.keystore -storepass android | grep -i 'androiddebugkey'
+          # androidApp/build.gradle.kts signs debug builds with this committed keystore, so every run
+          # produces an APK that installs over the previous one instead of a signature mismatch.
+          test -f ci/debug.keystore
+          keytool -list -keystore ci/debug.keystore -storepass android
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
