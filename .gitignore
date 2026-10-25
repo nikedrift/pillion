@@ -37,3 +37,6 @@ vendor/
 *.jks
 *.keystore
 keystore.properties
+
+# CI debug signing key (throwaway, public — keeps fork builds upgradeable in place)
+!ci/debug.keystore
